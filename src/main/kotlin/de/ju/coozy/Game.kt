@@ -7,11 +7,14 @@ import de.ju.coozy.core.GameEngine
 import de.ju.coozy.core.render.Mesh
 import de.ju.coozy.core.render.Shader
 import de.ju.coozy.core.render.primitives.Cube
-import de.ju.coozy.core.render.primitives.Plane
 import de.ju.coozy.core.utils.AssetManager
 import de.ju.coozy.core.utils.GltfModelLoader
 import de.ju.coozy.core.utils.ResourceLoader
-import de.ju.coozy.ecs.components.*
+import de.ju.coozy.ecs.components.CameraComponent
+import de.ju.coozy.ecs.components.DirectionalLightComponent
+import de.ju.coozy.ecs.components.ModelComponent
+import de.ju.coozy.ecs.components.PointLightComponent
+import de.ju.coozy.ecs.components.TransformComponent
 import de.ju.coozy.ecs.systems.CameraSystem
 import de.ju.coozy.ecs.systems.RenderSystem
 import de.ju.coozy.ecs.systems.SkyboxSystem
@@ -40,8 +43,6 @@ class Game : GameEngine() {
         val skyFrag = ResourceLoader.loadShaderSource("/shaders/skybox.frag")!!
         AssetManager.registerShader("skybox", Shader(skyVert, skyFrag))
 
-        AssetManager.registerMesh("plane", Mesh(Plane.VERTICES, Plane.INDICES))
-
         GltfModelLoader.loadModel("car", "/models/car.glb")
 
         world = configureWorld {
@@ -50,14 +51,6 @@ class Game : GameEngine() {
                 add(RenderSystem())
                 add(SkyboxSystem())
             }
-        }
-
-        world.entity {
-            it += TransformComponent(
-                position = Vector3f(0.0f, -1.0f, -5.0f),
-                size = Vector3f(20.0f, 0.01f, 20.0f)
-            )
-            it += MeshComponent("plane")
         }
 
         world.entity {
@@ -78,8 +71,16 @@ class Game : GameEngine() {
         }
 
         world.entity {
-            it += TransformComponent(position = Vector3f(1.5f, 2.0f, -3.0f))
-            it += PointLightComponent(color = Vector3f(1.0f, 0.8f, 0.6f), intensity = 1.2f)
+            it += DirectionalLightComponent(
+                direction = Vector3f(-0.3f, -0.8f, -0.4f).normalize(),
+                color = Vector3f(1.0f, 0.98f, 0.92f),
+                intensity = 1.3f
+            )
+        }
+
+        world.entity {
+            it += TransformComponent(position = Vector3f(1.5f, 2.5f, -2.5f))
+            it += PointLightComponent(color = Vector3f(1.0f, 0.9f, 0.8f), intensity = 1.5f)
         }
     }
 

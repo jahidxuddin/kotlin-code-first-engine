@@ -22,14 +22,35 @@ class RenderSystem : IteratingSystem(
             val cam = camEntity[CameraComponent]
             shader.setUniform("uView", cam.viewMatrix)
             shader.setUniform("uProjection", cam.projectionMatrix)
+
+            if (camEntity has TransformComponent) {
+                shader.setUniform("uViewPos", camEntity[TransformComponent].position)
+            }
+        }
+
+        world.family { all(DirectionalLightComponent) }.firstOrNull()?.let { dirEntity ->
+            val dirLight = dirEntity[DirectionalLightComponent]
+            val towardsLight = Vector3f(dirLight.direction).negate().normalize()
+            val lightColor = Vector3f(dirLight.color).mul(dirLight.intensity)
+            shader.setUniform("uHasDirLight", 1)
+            shader.setUniform("uDirLightDir", towardsLight)
+            shader.setUniform("uDirLightColor", lightColor)
+        } ?: run {
+            shader.setUniform("uHasDirLight", 0)
         }
 
         world.family { all(TransformComponent, PointLightComponent) }.firstOrNull()?.let { lightEntity ->
             val lightTransform = lightEntity[TransformComponent]
             val lightComp = lightEntity[PointLightComponent]
+            val lightColor = Vector3f(lightComp.color).mul(lightComp.intensity)
+            shader.setUniform("uHasPointLight", 1)
             shader.setUniform("uLightPos", lightTransform.position)
-            shader.setUniform("uLightColor", lightComp.color)
+            shader.setUniform("uLightColor", lightColor)
+        } ?: run {
+            shader.setUniform("uHasPointLight", 0)
         }
+
+        shader.setUniform("uAmbientColor", Vector3f(0.35f, 0.38f, 0.45f))
 
         super.onTick()
 

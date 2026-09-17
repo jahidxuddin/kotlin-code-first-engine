@@ -7,26 +7,20 @@ import de.ju.coozy.core.GameEngine
 import de.ju.coozy.core.render.Mesh
 import de.ju.coozy.core.render.Shader
 import de.ju.coozy.core.render.primitives.Cube
+import de.ju.coozy.core.render.primitives.Plane
 import de.ju.coozy.core.utils.AssetManager
 import de.ju.coozy.core.utils.ResourceLoader
-import de.ju.coozy.ecs.components.CameraComponent
-import de.ju.coozy.ecs.components.MeshComponent
-import de.ju.coozy.ecs.components.TransformComponent
+import de.ju.coozy.ecs.components.*
 import de.ju.coozy.ecs.systems.CameraSystem
-import de.ju.coozy.ecs.systems.MovementSystem
+import de.ju.coozy.ecs.systems.RenderSystem
+import de.ju.coozy.ecs.systems.SkyboxSystem
 import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.opengl.GL11
 
 class Game : GameEngine() {
 
-    private var world: World = configureWorld {
-        systems {
-            add(MovementSystem())
-            add(CameraSystem())
-        }
-    }
-
+    private lateinit var world: World
     private var cameraEntity: Entity? = null
 
     private var lastMouseX = 540.0
@@ -34,6 +28,7 @@ class Game : GameEngine() {
     private var firstMouse = true
 
     override fun handleInit() {
+        GL11.glEnable(GL11.GL_DEPTH_TEST)
         GL11.glClearColor(0.08f, 0.08f, 0.1f, 1.0f)
 
         val cubeVert = ResourceLoader.loadShaderSource("/shaders/cube.vert")!!
@@ -41,9 +36,23 @@ class Game : GameEngine() {
         AssetManager.registerShader("cube", Shader(cubeVert, cubeFrag))
         AssetManager.registerMesh("cube", Mesh(Cube.VERTICES, Cube.INDICES))
 
+        val skyVert = ResourceLoader.loadShaderSource("/shaders/skybox.vert")!!
+        val skyFrag = ResourceLoader.loadShaderSource("/shaders/skybox.frag")!!
+        AssetManager.registerShader("skybox", Shader(skyVert, skyFrag))
+
+        AssetManager.registerMesh("plane", Mesh(Plane.VERTICES, Plane.INDICES))
+
+        world = configureWorld {
+            systems {
+                add(CameraSystem())
+                add(RenderSystem())
+                add(SkyboxSystem())
+            }
+        }
+
         world.entity {
-            it += TransformComponent(position = Vector3f(0f, 0f, -5f))
-            it += MeshComponent(AssetManager.getMesh("cube"))
+            it += TransformComponent(position = Vector3f(0f, -1f, -5f), size = Vector3f(20f, 1f, 20f))
+            it += MeshComponent("plane")
         }
 
         cameraEntity = world.entity {
@@ -53,6 +62,11 @@ class Game : GameEngine() {
                     Math.toRadians(fov.toDouble()).toFloat(), 1080.0f / 720.0f, near, far
                 )
             }
+        }
+
+        world.entity {
+            it += TransformComponent(position = Vector3f(1.5f, 2.0f, -3.0f))
+            it += PointLightComponent(color = Vector3f(1.0f, 0.8f, 0.6f), intensity = 1.2f)
         }
     }
 
@@ -85,31 +99,6 @@ class Game : GameEngine() {
 
     override fun handleLoop(delta: Float) {
         world.update(delta)
-
-        val camEntity = cameraEntity ?: return
-
-        with(world) {
-            val camComp = camEntity[CameraComponent]
-
-            val shader = AssetManager.getShader("cube")
-            shader.bind()
-            shader.setUniform("uView", camComp.viewMatrix)
-            shader.setUniform("uProjection", camComp.projectionMatrix)
-
-            world.family { all(TransformComponent, MeshComponent) }.forEach { entity ->
-                val transform = entity[TransformComponent]
-                val meshComp = entity[MeshComponent]
-
-                transform.modelMatrix.identity().translate(transform.position).rotate(transform.rotation)
-                    .scale(transform.size)
-
-                shader.setUniform("uModel", transform.modelMatrix)
-
-                meshComp.renderMesh.draw()
-            }
-
-            shader.unbind()
-        }
     }
 
     override fun handleCleanup() {

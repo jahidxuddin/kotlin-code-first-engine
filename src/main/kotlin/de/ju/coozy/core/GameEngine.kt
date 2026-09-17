@@ -30,7 +30,8 @@ abstract class GameEngine {
         GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE)
         GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE)
 
-        window = GLFW.glfwCreateWindow(1080, 720, "Game Engine", MemoryUtil.NULL, MemoryUtil.NULL)
+        val baseTitle = "Coozy Scenes"
+        window = GLFW.glfwCreateWindow(1080, 720, baseTitle, MemoryUtil.NULL, MemoryUtil.NULL)
         if (window == MemoryUtil.NULL) throw RuntimeException("Failed to create the GLFW window")
 
         GLFW.glfwSetKeyCallback(
@@ -68,11 +69,23 @@ abstract class GameEngine {
         handleInit()
 
         var lastFrame = 0.0f
+        var fpsTimer = 0.0f
+        var frameCounter = 0
 
         while (!GLFW.glfwWindowShouldClose(window)) {
             val currentFrame = GLFW.glfwGetTime().toFloat()
             val deltaTime = currentFrame - lastFrame
             lastFrame = currentFrame
+
+            frameCounter++
+            fpsTimer += deltaTime
+            if (fpsTimer >= 1.0f) {
+                val fps = frameCounter / fpsTimer
+                val msPerFrame = (fpsTimer / frameCounter) * 1000.0f
+                GLFW.glfwSetWindowTitle(window, String.format(Locale.US, "%s | FPS: %.0f (%.2f ms)", baseTitle, fps, msPerFrame))
+                frameCounter = 0
+                fpsTimer = 0.0f
+            }
 
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT or GL11.GL_DEPTH_BUFFER_BIT)
 

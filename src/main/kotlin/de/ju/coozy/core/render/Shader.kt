@@ -65,10 +65,17 @@ class Shader(vertexShaderSourceCode: String, fragmentShaderSourceCode: String) {
         }
     }
 
-    fun setUniform(name: String, `val`: Vector3f) {
+    fun setUniform(name: String, value: Vector3f) {
         val location = getUniformLocation(name)
         if (location != -1) {
-            GL41.glProgramUniform3f(this.id, location, `val`.x, `val`.y, `val`.z)
+            GL41.glProgramUniform3f(this.id, location, value.x, value.y, value.z)
+        }
+    }
+
+    fun setUniform(name: String, value: Int) {
+        val location = getUniformLocation(name)
+        if (location != -1) {
+            GL41.glProgramUniform1i(this.id, location, value)
         }
     }
 

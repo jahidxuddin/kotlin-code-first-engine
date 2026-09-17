@@ -5,6 +5,7 @@ import de.ju.coozy.core.render.Mesh
 import de.ju.coozy.core.render.Model
 import de.ju.coozy.core.render.SubMesh
 import de.ju.coozy.core.render.Texture
+import org.joml.Vector3f
 import org.lwjgl.assimp.*
 import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
@@ -26,8 +27,11 @@ object GltfModelLoader {
             scene = Assimp.aiImportFileFromMemory(
                 byteBuffer,
                 Assimp.aiProcess_Triangulate or
-                        Assimp.aiProcess_GenNormals or
-                        Assimp.aiProcess_JoinIdenticalVertices,
+                        Assimp.aiProcess_GenSmoothNormals or
+                        Assimp.aiProcess_JoinIdenticalVertices or
+                        Assimp.aiProcess_FlipUVs or
+                        Assimp.aiProcess_SortByPType or
+                        Assimp.aiProcess_PreTransformVertices,
                 ""
             ) ?: throw RuntimeException("Assimp failed to parse GLB: ${Assimp.aiGetErrorString()}")
         } finally {
@@ -60,9 +64,9 @@ object GltfModelLoader {
                 val aiMat = AIMaterial.create(materialsBuffer.get(i))
                 val path = AIString.calloc()
 
-                val success = Assimp.aiGetMaterialTexture(
+                var success = Assimp.aiGetMaterialTexture(
                     aiMat,
-                    Assimp.aiTextureType_DIFFUSE,
+                    Assimp.aiTextureType_BASE_COLOR,
                     0,
                     path,
                     null as IntArray?,
@@ -72,6 +76,21 @@ object GltfModelLoader {
                     null,
                     null
                 )
+
+                if (success != Assimp.aiReturn_SUCCESS) {
+                    success = Assimp.aiGetMaterialTexture(
+                        aiMat,
+                        Assimp.aiTextureType_DIFFUSE,
+                        0,
+                        path,
+                        null as IntArray?,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                    )
+                }
 
                 var diffuseTexture: Texture? = null
                 if (success == Assimp.aiReturn_SUCCESS) {
@@ -84,7 +103,17 @@ object GltfModelLoader {
                     }
                 }
                 path.free()
-                materials.add(Material(diffuseTexture = diffuseTexture))
+
+                var diffuseColor = Vector3f(1.0f, 1.0f, 1.0f)
+                val aiColor = AIColor4D.calloc()
+                if (Assimp.aiGetMaterialColor(aiMat, Assimp.AI_MATKEY_BASE_COLOR, Assimp.aiTextureType_NONE, 0, aiColor) == Assimp.aiReturn_SUCCESS) {
+                    diffuseColor = Vector3f(aiColor.r(), aiColor.g(), aiColor.b())
+                } else if (Assimp.aiGetMaterialColor(aiMat, Assimp.AI_MATKEY_COLOR_DIFFUSE, Assimp.aiTextureType_NONE, 0, aiColor) == Assimp.aiReturn_SUCCESS) {
+                    diffuseColor = Vector3f(aiColor.r(), aiColor.g(), aiColor.b())
+                }
+                aiColor.free()
+
+                materials.add(Material(diffuseTexture = diffuseTexture, diffuseColor = diffuseColor))
             }
         }
 
@@ -128,25 +157,29 @@ object GltfModelLoader {
         for (i in 0 until vertexCount) {
             val offset = i * 8
 
-            // Position (x, y, z)
             val pos = positions.get(i)
             vertices[offset + 0] = pos.x()
             vertices[offset + 1] = pos.y()
             vertices[offset + 2] = pos.z()
 
-            // Normal (nx, ny, nz)
             if (normals != null) {
                 val norm = normals.get(i)
                 vertices[offset + 3] = norm.x()
                 vertices[offset + 4] = norm.y()
                 vertices[offset + 5] = norm.z()
+            } else {
+                vertices[offset + 3] = 0.0f
+                vertices[offset + 4] = 1.0f
+                vertices[offset + 5] = 0.0f
             }
 
-            // UV (u, v)
             if (texCoords != null) {
                 val uv = texCoords.get(i)
                 vertices[offset + 6] = uv.x()
                 vertices[offset + 7] = uv.y()
+            } else {
+                vertices[offset + 6] = 0.0f
+                vertices[offset + 7] = 0.0f
             }
         }
         return vertices
@@ -154,19 +187,18 @@ object GltfModelLoader {
 
     private fun extractIndices(aiMesh: AIMesh): IntArray {
         val faceCount = aiMesh.mNumFaces()
-        val indices = IntArray(faceCount * 3)
+        val indexList = ArrayList<Int>(faceCount * 3)
         val faces = aiMesh.mFaces()
 
-        var idx = 0
         for (i in 0 until faceCount) {
             val face = faces.get(i)
             val numIndices = face.mNumIndices()
             val buf = face.mIndices()
             for (j in 0 until numIndices) {
-                indices[idx++] = buf.get(j)
+                indexList.add(buf.get(j))
             }
         }
-        return indices
+        return indexList.toIntArray()
     }
 
 }

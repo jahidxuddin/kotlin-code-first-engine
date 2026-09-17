@@ -2,6 +2,7 @@ package de.ju.coozy.core.render
 
 import org.joml.Matrix4f
 import org.joml.Vector3f
+import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL20
 import org.lwjgl.opengl.GL41
 import org.lwjgl.system.MemoryStack
@@ -16,6 +17,10 @@ class Shader(vertexShaderSourceCode: String, fragmentShaderSourceCode: String) {
         GL20.glAttachShader(this.id, vertexShader)
         GL20.glAttachShader(this.id, fragmentShader)
         GL20.glLinkProgram(this.id)
+        if (GL20.glGetProgrami(this.id, GL20.GL_LINK_STATUS) == GL11.GL_FALSE) {
+            val log = GL20.glGetProgramInfoLog(this.id)
+            throw RuntimeException("Shader program linking failed: $log")
+        }
         GL20.glValidateProgram(this.id)
         GL20.glDeleteShader(vertexShader)
         GL20.glDeleteShader(fragmentShader)
@@ -25,6 +30,11 @@ class Shader(vertexShaderSourceCode: String, fragmentShaderSourceCode: String) {
         val shaderId = GL20.glCreateShader(shaderType)
         GL20.glShaderSource(shaderId, shaderSourceCode)
         GL20.glCompileShader(shaderId)
+        if (GL20.glGetShaderi(shaderId, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) {
+            val typeStr = if (shaderType == GL20.GL_VERTEX_SHADER) "Vertex" else "Fragment"
+            val log = GL20.glGetShaderInfoLog(shaderId)
+            throw RuntimeException("$typeStr shader compilation failed: $log")
+        }
         return shaderId
     }
 

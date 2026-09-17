@@ -11,6 +11,11 @@ abstract class GameEngine {
 
     protected var window: Long = 0
 
+    private var windowedX: Int = 100
+    private var windowedY: Int = 100
+    private var windowedWidth: Int = 1080
+    private var windowedHeight: Int = 720
+
     protected abstract fun handleInit()
 
     protected abstract fun handleKeyCallback(window: Long, key: Int, scancode: Int, action: Int, mods: Int)
@@ -20,6 +25,43 @@ abstract class GameEngine {
     protected abstract fun handleLoop(delta: Float)
 
     protected abstract fun handleCleanup()
+
+    protected fun toggleFullscreen(targetWindow: Long = this.window) {
+        val isFullscreen = GLFW.glfwGetWindowMonitor(targetWindow) != MemoryUtil.NULL
+
+        if (!isFullscreen) {
+            MemoryStack.stackPush().use { stack ->
+                val pX = stack.mallocInt(1)
+                val pY = stack.mallocInt(1)
+                val pWidth = stack.mallocInt(1)
+                val pHeight = stack.mallocInt(1)
+
+                GLFW.glfwGetWindowPos(targetWindow, pX, pY)
+                GLFW.glfwGetWindowSize(targetWindow, pWidth, pHeight)
+
+                windowedX = pX.get(0)
+                windowedY = pY.get(0)
+                windowedWidth = pWidth.get(0)
+                windowedHeight = pHeight.get(0)
+            }
+
+            val monitor = GLFW.glfwGetPrimaryMonitor()
+            val mode = GLFW.glfwGetVideoMode(monitor)
+            if (mode != null) {
+                GLFW.glfwSetWindowMonitor(targetWindow, monitor, 0, 0, mode.width(), mode.height(), mode.refreshRate())
+            }
+        } else {
+            GLFW.glfwSetWindowMonitor(
+                targetWindow,
+                MemoryUtil.NULL,
+                windowedX,
+                windowedY,
+                windowedWidth,
+                windowedHeight,
+                GLFW.GLFW_DONT_CARE
+            )
+        }
+    }
 
     fun run() {
         GLFWErrorCallback.createPrint(System.err).set()
@@ -34,16 +76,18 @@ abstract class GameEngine {
         window = GLFW.glfwCreateWindow(1080, 720, baseTitle, MemoryUtil.NULL, MemoryUtil.NULL)
         if (window == MemoryUtil.NULL) throw RuntimeException("Failed to create the GLFW window")
 
-        GLFW.glfwSetKeyCallback(
-            window
-        ) { window: Long, key: Int, scancode: Int, action: Int, mods: Int ->
-            handleKeyCallback(window, key, scancode, action, mods)
+        GLFW.glfwSetKeyCallback(window) { win: Long, key: Int, scancode: Int, action: Int, mods: Int ->
+            handleKeyCallback(win, key, scancode, action, mods)
+        }
+
+        GLFW.glfwSetFramebufferSizeCallback(window) { _, width, height ->
+            GL11.glViewport(0, 0, width, height)
         }
 
         GLFW.glfwSetInputMode(window, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED)
 
-        GLFW.glfwSetCursorPosCallback(window) { l, d, d1 ->
-            this.handleMousePosCallback(l, d, d1)
+        GLFW.glfwSetCursorPosCallback(window) { win, xpos, ypos ->
+            this.handleMousePosCallback(win, xpos, ypos)
         }
 
         MemoryStack.stackPush().use { stack ->
@@ -53,10 +97,14 @@ abstract class GameEngine {
             GLFW.glfwGetWindowSize(window, pWidth, pHeight)
 
             val vidmode: GLFWVidMode = checkNotNull(GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor()))
-            GLFW.glfwSetWindowPos(
-                window, (vidmode.width() - pWidth.get(0)) / 2, (vidmode.height() - pHeight.get(0)) / 2
-            )
+            windowedX = (vidmode.width() - pWidth.get(0)) / 2
+            windowedY = (vidmode.height() - pHeight.get(0)) / 2
+            windowedWidth = pWidth.get(0)
+            windowedHeight = pHeight.get(0)
+
+            GLFW.glfwSetWindowPos(window, windowedX, windowedY)
         }
+
         GLFW.glfwMakeContextCurrent(window)
         GLFW.glfwSwapInterval(1)
 
@@ -68,7 +116,7 @@ abstract class GameEngine {
 
         handleInit()
 
-        var lastFrame = 0.0f
+        var lastFrame = GLFW.glfwGetTime().toFloat()
         var fpsTimer = 0.0f
         var frameCounter = 0
 
@@ -82,7 +130,10 @@ abstract class GameEngine {
             if (fpsTimer >= 1.0f) {
                 val fps = frameCounter / fpsTimer
                 val msPerFrame = (fpsTimer / frameCounter) * 1000.0f
-                GLFW.glfwSetWindowTitle(window, String.format(Locale.US, "%s | FPS: %.0f (%.2f ms)", baseTitle, fps, msPerFrame))
+                GLFW.glfwSetWindowTitle(
+                    window,
+                    String.format(Locale.US, "%s | FPS: %.0f (%.2f ms)", baseTitle, fps, msPerFrame)
+                )
                 frameCounter = 0
                 fpsTimer = 0.0f
             }
@@ -101,7 +152,6 @@ abstract class GameEngine {
         GLFW.glfwDestroyWindow(window)
 
         GLFW.glfwTerminate()
-        Objects.requireNonNull(GLFW.glfwSetErrorCallback { _: Int, _: Long -> })!!.free()
+        GLFW.glfwSetErrorCallback(null)?.free()
     }
-
 }

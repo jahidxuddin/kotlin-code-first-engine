@@ -9,6 +9,7 @@ import de.ju.coozy.core.render.Shader
 import de.ju.coozy.core.render.primitives.Cube
 import de.ju.coozy.core.render.primitives.Plane
 import de.ju.coozy.core.utils.AssetManager
+import de.ju.coozy.core.utils.GltfModelLoader
 import de.ju.coozy.core.utils.ResourceLoader
 import de.ju.coozy.ecs.components.*
 import de.ju.coozy.ecs.systems.CameraSystem
@@ -28,7 +29,6 @@ class Game : GameEngine() {
     private var firstMouse = true
 
     override fun handleInit() {
-        GL11.glEnable(GL11.GL_DEPTH_TEST)
         GL11.glClearColor(0.08f, 0.08f, 0.1f, 1.0f)
 
         val cubeVert = ResourceLoader.loadShaderSource("/shaders/cube.vert")!!
@@ -42,6 +42,8 @@ class Game : GameEngine() {
 
         AssetManager.registerMesh("plane", Mesh(Plane.VERTICES, Plane.INDICES))
 
+        GltfModelLoader.loadModel("car", "/models/car.glb")
+
         world = configureWorld {
             systems {
                 add(CameraSystem())
@@ -51,8 +53,19 @@ class Game : GameEngine() {
         }
 
         world.entity {
-            it += TransformComponent(position = Vector3f(0f, -1f, -5f), size = Vector3f(20f, 1f, 20f))
+            it += TransformComponent(
+                position = Vector3f(0.0f, -1.0f, -5.0f),
+                size = Vector3f(20.0f, 0.01f, 20.0f)
+            )
             it += MeshComponent("plane")
+        }
+
+        world.entity {
+            it += TransformComponent(
+                position = Vector3f(0.0f, -1.0f, -5.0f),
+                size = Vector3f(1.0f, 1.0f, 1.0f)
+            )
+            it += ModelComponent("car")
         }
 
         cameraEntity = world.entity {
@@ -73,6 +86,9 @@ class Game : GameEngine() {
     override fun handleKeyCallback(window: Long, key: Int, scancode: Int, action: Int, mods: Int) {
         if (key == GLFW.GLFW_KEY_ESCAPE && action == GLFW.GLFW_RELEASE) {
             GLFW.glfwSetWindowShouldClose(window, true)
+        }
+        if (key == GLFW.GLFW_KEY_F && action == GLFW.GLFW_RELEASE) {
+            toggleFullscreen(window)
         }
     }
 

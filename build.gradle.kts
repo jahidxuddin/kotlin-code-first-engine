@@ -61,6 +61,7 @@ dependencies {
     implementation("org.lwjgl:lwjgl-stb::$lwjglNatives")
     implementation("org.joml:joml:$jomlVersion")
     implementation("io.github.quillraven.fleks:Fleks:2.15")
+    testImplementation(kotlin("test"))
 }
 
 kotlin {

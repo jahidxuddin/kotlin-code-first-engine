@@ -36,9 +36,6 @@ abstract class GameEngine {
         GLFW.glfwSetKeyCallback(
             window
         ) { window: Long, key: Int, scancode: Int, action: Int, mods: Int ->
-            if (key == GLFW.GLFW_KEY_ESCAPE && action == GLFW.GLFW_RELEASE) {
-                GLFW.glfwSetWindowShouldClose(window, true)
-            }
             handleKeyCallback(window, key, scancode, action, mods)
         }
 
@@ -56,9 +53,7 @@ abstract class GameEngine {
 
             val vidmode: GLFWVidMode = checkNotNull(GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor()))
             GLFW.glfwSetWindowPos(
-                window,
-                (vidmode.width() - pWidth.get(0)) / 2,
-                (vidmode.height() - pHeight.get(0)) / 2
+                window, (vidmode.width() - pWidth.get(0)) / 2, (vidmode.height() - pHeight.get(0)) / 2
             )
         }
         GLFW.glfwMakeContextCurrent(window)
@@ -93,8 +88,7 @@ abstract class GameEngine {
         GLFW.glfwDestroyWindow(window)
 
         GLFW.glfwTerminate()
-        Objects.requireNonNull(GLFW.glfwSetErrorCallback { _: Int, _: Long -> })!!
-            .free()
+        Objects.requireNonNull(GLFW.glfwSetErrorCallback { _: Int, _: Long -> })!!.free()
     }
 
 }

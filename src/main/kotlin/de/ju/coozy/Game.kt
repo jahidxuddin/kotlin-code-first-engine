@@ -7,17 +7,15 @@ import de.ju.coozy.core.GameEngine
 import de.ju.coozy.core.render.Mesh
 import de.ju.coozy.core.render.Shader
 import de.ju.coozy.core.render.primitives.Cube
+import de.ju.coozy.core.render.primitives.Plane
 import de.ju.coozy.core.utils.AssetManager
 import de.ju.coozy.core.utils.GltfModelLoader
 import de.ju.coozy.core.utils.ResourceLoader
-import de.ju.coozy.ecs.components.CameraComponent
-import de.ju.coozy.ecs.components.DirectionalLightComponent
-import de.ju.coozy.ecs.components.ModelComponent
-import de.ju.coozy.ecs.components.PointLightComponent
-import de.ju.coozy.ecs.components.TransformComponent
+import de.ju.coozy.ecs.components.*
 import de.ju.coozy.ecs.systems.CameraSystem
 import de.ju.coozy.ecs.systems.RenderSystem
 import de.ju.coozy.ecs.systems.SkyboxSystem
+import org.joml.Quaternionf
 import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.opengl.GL11
@@ -38,12 +36,14 @@ class Game : GameEngine() {
         val cubeFrag = ResourceLoader.loadShaderSource("/shaders/cube.frag")!!
         AssetManager.registerShader("cube", Shader(cubeVert, cubeFrag))
         AssetManager.registerMesh("cube", Mesh(Cube.VERTICES, Cube.INDICES))
+        AssetManager.registerMesh("plane", Mesh(Plane.VERTICES, Plane.INDICES))
 
         val skyVert = ResourceLoader.loadShaderSource("/shaders/skybox.vert")!!
         val skyFrag = ResourceLoader.loadShaderSource("/shaders/skybox.frag")!!
         AssetManager.registerShader("skybox", Shader(skyVert, skyFrag))
 
-        GltfModelLoader.loadModel("car", "/models/car.glb")
+        GltfModelLoader.loadModel("rihal", "/models/rihal.glb")
+        GltfModelLoader.loadModel("quran", "/models/quran.glb")
 
         world = configureWorld {
             systems {
@@ -55,15 +55,39 @@ class Game : GameEngine() {
 
         world.entity {
             it += TransformComponent(
-                position = Vector3f(0.0f, -1.0f, -5.0f),
-                size = Vector3f(1.0f, 1.0f, 1.0f)
+                position = Vector3f(0.0f, -1.0f, 0.0f),
+                size = Vector3f(200.0f, 1.0f, 200.0f)
             )
-            it += ModelComponent("car")
+            it += MeshComponent("plane")
+        }
+
+        world.entity {
+            it += TransformComponent(
+                position = Vector3f(0.0f, -1.0f, 0.0f),
+                size = Vector3f(0.01f, 0.01f, 0.01f)
+            )
+            it += ModelComponent("rihal")
+        }
+
+        world.entity {
+            it += TransformComponent(
+                position = Vector3f(0.0f, -0.42f, 0.05f),
+                rotation = Quaternionf()
+                    .rotateY(Math.toRadians(90.0).toFloat())
+                    .rotateX(Math.toRadians(12.0).toFloat()),
+                size = Vector3f(0.0016f, 0.0016f, 0.0016f)
+            )
+            it += ModelComponent("quran")
         }
 
         cameraEntity = world.entity {
-            it += TransformComponent(position = Vector3f(0.0f, 0.0f, 3.0f))
+            it += TransformComponent(
+                position = Vector3f(0.0f, 2.0f, 5.0f)
+            )
             it += CameraComponent().apply {
+                isAttached = false
+                yaw = -90.0f
+                pitch = -20.0f
                 projectionMatrix.perspective(
                     Math.toRadians(fov.toDouble()).toFloat(), 1080.0f / 720.0f, near, far
                 )
@@ -79,7 +103,7 @@ class Game : GameEngine() {
         }
 
         world.entity {
-            it += TransformComponent(position = Vector3f(1.5f, 2.5f, -2.5f))
+            it += TransformComponent(position = Vector3f(1.5f, 4.0f, 2.0f))
             it += PointLightComponent(color = Vector3f(1.0f, 0.9f, 0.8f), intensity = 1.5f)
         }
     }

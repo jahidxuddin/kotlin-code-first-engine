@@ -72,7 +72,7 @@ abstract class GameEngine {
         GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE)
         GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE)
 
-        val baseTitle = "Coozy Scenes"
+        val baseTitle = "Game Engine"
         window = GLFW.glfwCreateWindow(1080, 720, baseTitle, MemoryUtil.NULL, MemoryUtil.NULL)
         if (window == MemoryUtil.NULL) throw RuntimeException("Failed to create the GLFW window")
 
